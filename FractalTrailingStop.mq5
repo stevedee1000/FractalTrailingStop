@@ -5,7 +5,7 @@ CAccountInfo accountInfo;
 #include <Steve\Direction_Fractal_H1H4.mqh>
 
 
-int upFracIndex=0, downFracIndex=0, H4UpFracIndex=0, H4DownFracIndex=0;
+int upFracIndex=0, downFracIndex=0, H4UpFracIndex=0, H4DownFracIndex=0, handle;
 double upFractal, currentUpFractal, H4UpFractal, currentH4UpFractal;
 double downFractal, currentDownFractal, H4DownFractal, currentH4DownFractal;
 double lotSize, orderPrice;
@@ -19,6 +19,7 @@ input double   lowPointsPad = 20;
 
 void OnInit()
    {
+   handle = iFractals(_Symbol, _Period);
    currentUpFractal = GetUpFractal(); // get the most recent up fractal
    upFracIndex = GetUpFractalIndex();
    currentDownFractal = GetDownFractal(); // get the most recent down fractal
@@ -30,13 +31,18 @@ void OnInit()
    PrintComment();
    //Print(positions," ",pendingTrendOrders," ",pendingCounterTrendOrders);
    }
-//void DebugBreak();
+
+//void OnTimer()
+
 void OnTick()
-   {  // ***Do we have any open positions?***
+   {
+   
+   // ***Do we have any open positions?***
    if (PositionsTotal() == 0) positions = false; position = "FLAT";  
-   for (int i = 0; i<PositionsTotal(); i++)
+   for (int i = PositionsTotal()-1; i>=0; i--)
       {
-      if (PositionGetSymbol(i) == Symbol()) //yes, we have open position(s)
+      //positions = false; position = "FLAT"; // reset positions flag and position direction
+      if (PositionGetSymbol(i) == _Symbol) //yes, we have open position(s)
          {
          positions = true;
          // Are we long or short?         
@@ -96,10 +102,11 @@ void OnTick()
    ArraySetAsSeries(rates, true);
    CopyRates(Symbol(),PERIOD_CURRENT,0,1,rates);
    if (OrdersTotal() == 0) pendingTrendOrders = false; pendingCounterTrendOrders = false;
-   for(int i = 0; i < OrdersTotal(); i++)
+   for(int i=OrdersTotal()-1; i>=0; i--)
       {
+      //pendingTrendOrders = false; pendingCounterTrendOrders = false;
       ulong ticket = OrderGetTicket(i);         
-      if(OrderGetString(ORDER_SYMBOL) == Symbol())        
+      if(OrderGetString(ORDER_SYMBOL) == _Symbol)        
          {
          if(currentDirection == "UP" && OrderGetInteger(ORDER_TYPE) == ORDER_TYPE_BUY_STOP)
             {
@@ -324,14 +331,14 @@ void CreateTrendOrder()
    upFracIndex = GetUpFractalIndex();
    downFractal = GetDownFractal();
    downFracIndex = GetDownFractalIndex();
-   CopyHigh(Symbol(),PERIOD_CURRENT,0,upFracIndex,high);
-   CopyLow(Symbol(),PERIOD_CURRENT,0,downFracIndex,low);
+   CopyHigh(_Symbol,PERIOD_CURRENT,0,upFracIndex,high);
+   CopyLow(_Symbol,PERIOD_CURRENT,0,downFracIndex,low);
    lotSize = GetLotSize(upFractal, downFractal);
    if(direction == "UP" && Ask < upFractal && Ask > downFractal 
       && low[ArrayMinimum(low,0,downFracIndex)] > downFractal && high[ArrayMaximum(high,0,upFracIndex)] < upFractal)
       {
       price = upFractal+_Point*highPointsPad;
-      if(!trade.BuyStop(lotSize,price,Symbol(),0,0,0,0,NULL))
+      if(!trade.BuyStop(lotSize,price,_Symbol,0,0,0,0,NULL))
          {
          //--- failure message         
          Print("BuyStop method failed. Return code: ",GetLastError()," ",resultDesc);
@@ -346,7 +353,7 @@ void CreateTrendOrder()
       && low[ArrayMinimum(low,0,downFracIndex)] > downFractal && high[ArrayMaximum(high,0,upFracIndex)] < upFractal)
       {
       price = downFractal-_Point*lowPointsPad;
-      if(!trade.SellStop(lotSize,price,Symbol(),0,0,0,0,NULL))
+      if(!trade.SellStop(lotSize,price,_Symbol,0,0,0,0,NULL))
          {
          //--- failure message
          Print("SellStop method failed. Return code: ",resultCode,
@@ -362,7 +369,7 @@ void CreateTrendOrder()
 
 void CreateCounterTrendOrder()
    {
-   double Ask = SymbolInfoDouble(Symbol(),SYMBOL_ASK), Bid = SymbolInfoDouble(Symbol(),SYMBOL_BID), price;
+   double Ask = SymbolInfoDouble(_Symbol,SYMBOL_ASK), Bid = SymbolInfoDouble(_Symbol,SYMBOL_BID), price;
    string direction = GetDirection();
    double high[], low[];
    ArraySetAsSeries(high, true);
@@ -373,17 +380,17 @@ void CreateCounterTrendOrder()
    //H4UpFracIndex = Get
    downFractal = GetDownFractal();
    H4DownFractal = GetH4DownFractal();
-   CopyHigh(Symbol(),PERIOD_CURRENT,0,upFracIndex,high);
-   CopyLow(Symbol(),PERIOD_CURRENT,0,downFracIndex,low);   
+   CopyHigh(_Symbol,PERIOD_CURRENT,0,upFracIndex,high);
+   CopyLow(_Symbol,PERIOD_CURRENT,0,downFracIndex,low);   
    if(direction == "UP" && Bid < upFractal && Bid > H4DownFractal)
       {
       lotSize = GetLotSize(upFractal, H4DownFractal);
       price = H4DownFractal-_Point*lowPointsPad;
-      if(!trade.SellStop(lotSize,price,Symbol(),0,0,0,0,NULL))
+      if(!trade.SellStop(lotSize,price,_Symbol,0,0,0,0,NULL))
          {
          //--- failure message         
          Print("SellStop method failed. Return code: ",GetLastError()," ",resultDesc);
-         //Print(direction, " ", Symbol()," ",lotSize," ",price);
+         //Print(direction, " ", _Symbol," ",lotSize," ",price);
          }
       else
          {         
